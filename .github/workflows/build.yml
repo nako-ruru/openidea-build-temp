@@ -22,7 +22,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with: { key: x86_64-pc-windows-msvc, cache-on-failure: true }
       - run: pnpm install --frozen-lockfile
-      - run: pnpm tauri build --target x86_64-pc-windows-msvc --config '{"bundle":{"createUpdaterArtifacts":false}}'
+      - run: pnpm tauri build --target x86_64-pc-windows-msvc --config tauri-noupdate.json
       - uses: actions/upload-artifact@v4
         with:
           name: openidea-windows-x64
