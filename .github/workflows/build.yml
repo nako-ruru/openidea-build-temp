@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           repository: nako-ruru/openidea
-          ref: d86d9a4246511af46fa3700fb74c4ae3332c01d1
+          ref: 1e69ebeeec581225a2e69ceb6297178828ed5719
       - uses: pnpm/action-setup@v5
         with: { version: 11 }
       - uses: actions/setup-node@v5
