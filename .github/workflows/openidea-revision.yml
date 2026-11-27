@@ -1,0 +1,54 @@
+name: Build OpenIDEA with the gopls revision request
+
+on:
+  push:
+    paths:
+      - ".github/workflows/openidea-revision.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: nako-ruru/openidea
+          ref: feat/go-revision-fork
+
+      - uses: pnpm/action-setup@v5
+        with: { version: 11 }
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: pnpm }
+      - uses: dtolnay/rust-toolchain@stable
+        with: { targets: x86_64-pc-windows-msvc }
+      - uses: Swatinem/rust-cache@v2
+        with: { key: x86_64-pc-windows-msvc, cache-on-failure: true }
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm gen:bindings
+      - name: Rust checks
+        run: cargo check -p ide-host --all-targets
+      - name: Frontend checks
+        run: pnpm typecheck
+
+      - name: Build the app
+        shell: bash
+        run: |
+          printf '%s' '{"bundle":{"createUpdaterArtifacts":false}}' > tauri-noupdate.json
+          pnpm tauri build --target x86_64-pc-windows-msvc --config tauri-noupdate.json
+
+      - name: Publish the binary
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: openidea-gopls-revision
+          name: OpenIDEA with the gopls revision request
+          prerelease: true
+          files: target/x86_64-pc-windows-msvc/release/openidea.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: openidea-gopls-revision
+          path: target/x86_64-pc-windows-msvc/release/openidea.exe
