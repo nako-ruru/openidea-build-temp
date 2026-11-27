@@ -52,3 +52,5 @@ jobs:
         with:
           name: openidea-gopls-revision
           path: target/x86_64-pc-windows-msvc/release/openidea.exe
+
+# build: 792a2cbdb
