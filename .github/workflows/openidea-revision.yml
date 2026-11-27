@@ -1,4 +1,4 @@
-name: Build OpenIDEA with the gopls revision request
+﻿name: Build OpenIDEA with the gopls revision request
 
 on:
   push:
@@ -43,8 +43,8 @@ jobs:
       - name: Publish the binary
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: openidea-gopls-revision
-          name: OpenIDEA with the gopls revision request
+          tag_name: openidea-gopls-revision-final
+          name: OpenIDEA with the gopls revision request (final)
           prerelease: true
           files: target/x86_64-pc-windows-msvc/release/openidea.exe
 
@@ -54,3 +54,6 @@ jobs:
           path: target/x86_64-pc-windows-msvc/release/openidea.exe
 
 # build: 792a2cbdb
+
+
+# build: 0eeba41bf
