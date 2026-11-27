@@ -1,4 +1,4 @@
-// Copyright 2026 The Go Authors. All rights reserved.
+﻿// Copyright 2026 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -87,15 +87,14 @@ func revisionDefinition(ctx context.Context, session *cache.Session, cache *revi
 }
 
 func revisionPrepare(ctx context.Context, session *cache.Session, cache *revisionCache, params revisionPrepareParams) error {
-	uri := params.TextDocument.URI
-	snapshot, release, err := session.SnapshotOf(ctx, uri)
-	if err != nil {
-		return err
-	}
-	defer release()
-
-	_, err = cache.snapshotFor(ctx, snapshot, uri, []byte(params.Text))
-	return err
+	// Prewarm is disabled: building the derived snapshot before the workspace
+	// has loaded can cache a graph without package metadata, which poisons every
+	// later revision request. The first real request builds it after loading.
+	_ = ctx
+	_ = session
+	_ = cache
+	_ = params
+	return nil
 }
 
 // A revisionCache keeps the HEAD variant of a file alive between requests.
@@ -168,3 +167,4 @@ func (c *revisionCache) snapshotFor(ctx context.Context, parent *cache.Snapshot,
 	c.entries[key] = &revisionEntry{snapshot: derived, release: release, used: now}
 	return derived, nil
 }
+
