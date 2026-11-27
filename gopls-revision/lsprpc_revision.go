@@ -22,9 +22,18 @@ import (
 // workspace document.
 const revisionDefinitionMethod = "openidea/revisionDefinition"
 
+// revisionPrepareMethod builds and caches the HEAD snapshot before the first
+// hover or click, so the probe does not pay the package's first analysis.
+const revisionPrepareMethod = "openidea/revisionPrepare"
+
 type revisionDefinitionParams struct {
 	TextDocument protocol.TextDocumentIdentifier `json:"textDocument"`
 	Position     protocol.Position               `json:"position"`
+	Text         string                          `json:"text"`
+}
+
+type revisionPrepareParams struct {
+	TextDocument protocol.TextDocumentIdentifier `json:"textDocument"`
 	Text         string                          `json:"text"`
 }
 
@@ -34,15 +43,24 @@ type revisionDefinitionParams struct {
 func revisionHandler(session *cache.Session, next jsonrpc2.Handler) jsonrpc2.Handler {
 	cache := newRevisionCache()
 	return func(ctx context.Context, reply jsonrpc2.Replier, req jsonrpc2.Request) error {
-		if req.Method() != revisionDefinitionMethod {
+		switch req.Method() {
+		case revisionDefinitionMethod:
+			var params revisionDefinitionParams
+			if err := json.Unmarshal(req.Params(), &params); err != nil {
+				return reply(ctx, nil, err)
+			}
+			locations, err := revisionDefinition(ctx, session, cache, params)
+			return reply(ctx, locations, err)
+		case revisionPrepareMethod:
+			var params revisionPrepareParams
+			if err := json.Unmarshal(req.Params(), &params); err != nil {
+				return reply(ctx, nil, err)
+			}
+			err := revisionPrepare(ctx, session, cache, params)
+			return reply(ctx, nil, err)
+		default:
 			return next(ctx, reply, req)
 		}
-		var params revisionDefinitionParams
-		if err := json.Unmarshal(req.Params(), &params); err != nil {
-			return reply(ctx, nil, err)
-		}
-		locations, err := revisionDefinition(ctx, session, cache, params)
-		return reply(ctx, locations, err)
 	}
 }
 
@@ -66,6 +84,18 @@ func revisionDefinition(ctx context.Context, session *cache.Session, cache *revi
 	// A zero-width range at the cursor: Definition accepts a range because it
 	// also handles selections.
 	return golang.Definition(ctx, derived, fh, protocol.Range{Start: params.Position, End: params.Position})
+}
+
+func revisionPrepare(ctx context.Context, session *cache.Session, cache *revisionCache, params revisionPrepareParams) error {
+	uri := params.TextDocument.URI
+	snapshot, release, err := session.SnapshotOf(ctx, uri)
+	if err != nil {
+		return err
+	}
+	defer release()
+
+	_, err = cache.snapshotFor(ctx, snapshot, uri, []byte(params.Text))
+	return err
 }
 
 // A revisionCache keeps the HEAD variant of a file alive between requests.
