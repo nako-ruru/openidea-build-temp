@@ -43,8 +43,8 @@ jobs:
       - name: Publish the binary
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: openidea-gopls-revision-final
-          name: OpenIDEA with the gopls revision request (final)
+          tag_name: openidea-gopls-revision-cache
+          name: OpenIDEA with the gopls revision request (cache)
           prerelease: true
           files: target/x86_64-pc-windows-msvc/release/openidea.exe
 
@@ -57,3 +57,6 @@ jobs:
 
 
 # build: 0eeba41bf
+
+
+# build: fade07dab
