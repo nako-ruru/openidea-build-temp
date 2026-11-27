@@ -31,6 +31,10 @@ func (s *Snapshot) SnapshotWithText(ctx context.Context, uri protocol.DocumentUR
 	derived, _ := s.clone(ctx, context.WithoutCancel(s.backgroundCtx), StateChange{
 		Files: map[protocol.DocumentURI]file.Handle{uri: fh},
 	}, func() {})
+	// Reuse the parent's already loaded package metadata. Otherwise awaitLoaded
+	// sees shouldLoad and starts a go/packages.Load on every revision request,
+	// which starves ordinary requests in the same server.
+	derived.shouldLoad.Clear()
 	return derived, func() {
 		derived.cancel()
 		derived.decref()
