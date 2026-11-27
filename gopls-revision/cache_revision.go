@@ -26,7 +26,9 @@ func (s *Snapshot) SnapshotWithText(ctx context.Context, uri protocol.DocumentUR
 		kind:    file.Go,
 		saved:   false,
 	}
-	derived, _ := s.clone(ctx, s.backgroundCtx, StateChange{
+	// Detach from the parent snapshot's background context: a didChange that
+	// replaces that snapshot cancels it, and must not cancel this request.
+	derived, _ := s.clone(ctx, context.WithoutCancel(s.backgroundCtx), StateChange{
 		Files: map[protocol.DocumentURI]file.Handle{uri: fh},
 	}, func() {})
 	return derived, func() {
