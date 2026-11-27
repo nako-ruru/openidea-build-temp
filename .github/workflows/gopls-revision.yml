@@ -1,0 +1,57 @@
+name: Build gopls with revision definition
+
+on:
+  push:
+    paths:
+      - "gopls-revision/**"
+      - ".github/workflows/gopls-revision.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.x"
+
+      - name: Fetch gopls v0.24.0
+        shell: bash
+        run: git clone --depth 1 --branch gopls/v0.24.0 https://github.com/golang/tools.git tools
+
+      - name: Apply the revision patch
+        shell: bash
+        run: |
+          cp gopls-revision/cache_revision.go tools/gopls/internal/cache/revision.go
+          cp gopls-revision/lsprpc_revision.go tools/gopls/internal/lsprpc/revision.go
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("tools/gopls/internal/lsprpc/lsprpc.go")
+          s = p.read_text(encoding="utf-8")
+          old = "protocol.ServerHandler(svr,\n\t\t\t\t\tjsonrpc2.MethodNotFound)"
+          new = "protocol.ServerHandler(svr,\n\t\t\t\t\trevisionHandler(session, jsonrpc2.MethodNotFound))"
+          assert s.count(old) == 1, s.count(old)
+          p.write_text(s.replace(old, new), encoding="utf-8")
+          PY
+
+      - name: Build
+        working-directory: tools/gopls
+        run: go build -trimpath -o gopls-openidea.exe .
+
+      - name: Publish the binary
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: gopls-revision
+          name: gopls with OpenIDEA revision definition
+          prerelease: true
+          files: tools/gopls/gopls-openidea.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gopls-openidea
+          path: tools/gopls/gopls-openidea.exe
