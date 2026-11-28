@@ -1,0 +1,73 @@
+name: Build OpenIDEA from a supplied ref
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: "Commit SHA / branch / tag in nako-ruru/openidea to build"
+        required: true
+        type: string
+      artifact_name:
+        description: "Artifact name; leave empty for openidea-<run_id>"
+        required: false
+        type: string
+        default: ""
+      run_typecheck:
+        description: "Run pnpm typecheck before building"
+        required: false
+        type: choice
+        default: "true"
+        options:
+          - "true"
+          - "false"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Check out requested source ref
+        uses: actions/checkout@v5
+        with:
+          repository: nako-ruru/openidea
+          ref: ${{ inputs.source_ref }}
+
+      - uses: pnpm/action-setup@v5
+        with: { version: 11 }
+
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: pnpm }
+
+      - uses: dtolnay/rust-toolchain@stable
+        with: { targets: x86_64-pc-windows-msvc }
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: x86_64-pc-windows-msvc
+          cache-on-failure: true
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm gen:bindings
+
+      - name: Typecheck frontend
+        if: ${{ inputs.run_typecheck == 'true' }}
+        run: pnpm typecheck
+
+      - name: Build the app
+        shell: bash
+        run: |
+          printf '%s' '{"bundle":{"createUpdaterArtifacts":false}}' > tauri-noupdate.json
+          pnpm tauri build --target x86_64-pc-windows-msvc --config tauri-noupdate.json
+
+      - name: Upload the build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name || format('openidea-{0}', github.run_id) }}
+          path: |
+            target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+            target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+            target/x86_64-pc-windows-msvc/release/openidea.exe
+          if-no-files-found: error
